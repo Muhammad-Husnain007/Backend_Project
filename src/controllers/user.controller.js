@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/AsyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.model.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
-import fileUploadCloudinary from "../utils/Fileupload.js"
+import {fileUploadCloudinary, deleteFileFromCloudinary} from "../utils/Fileupload.js"
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
 
@@ -52,7 +52,6 @@ const registerUser = asyncHandler(async (req, res) => {
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar is required")
     }
-
     const avatar = await fileUploadCloudinary(avatarLocalPath);
     const coverImage = await fileUploadCloudinary(coverImageLocalPath);
 
@@ -119,8 +118,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken: 1
             }
         },
         {
@@ -136,7 +135,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         .clearCookie("accessToken", options)
         .clearCookie("refreshToken", options)
         .json(
-            new ApiResponse(200, "", "User Logout Successfully")
+            new ApiResponse(200, {}, "User Logout Successfully")
         )
 });
 
@@ -220,9 +219,7 @@ const getUserDataById = asyncHandler(async (req, res) => {
     try {
         // const id = req.user?._id
         const { id } = req.params
-        console.log(id)
         const userGetById = await User.findById(id)
-        console.log(userGetById)
         return res.status(200)
             .json(new ApiResponse(
                 200, userGetById, "This user is Exsist"
@@ -266,7 +263,7 @@ const updateUserData = asyncHandler(async (req, res) => {
 const updateUserAvatar = asyncHandler(async (req, res) => {
     const { id } = req.params
     const avatarLocalPath = req.file?.path
-    console.log(avatarLocalPath)
+    // console.log(avatarLocalPath)
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
@@ -349,17 +346,15 @@ const deleteUser = asyncHandler(async (req, res) => {
 // ============ Agregation Pipeline
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-    // const { username } = req.params
-    const { id } = req.params
-    if (!id) {
+    const { username } = req.params
+    if (!username) {
         throw new ApiError(400, "Username not found")
     }
 
     const channel = await User.aggregate([
         {
             $match: {
-                // username: username?.toLowerCase()
-                id: id
+                username: username?.toLowerCase()
             }
         },
         {
@@ -486,4 +481,5 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
+    getUserWatchHistory
 }
